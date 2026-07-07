@@ -1,0 +1,830 @@
+// ============================================================
+// MWV-Script v4  —  mwv.jpk メインスクリプト
+// Engine: JAS (Rhino)
+// 制約: ES5 / var / function / 文字列連結(+) のみ
+// ============================================================
+
+// ── Javaクラス import ────────────────────────────────────────
+var LinearLayout         = Packages.android.widget.LinearLayout;
+var FrameLayout          = Packages.android.widget.FrameLayout;
+var TextView             = Packages.android.widget.TextView;
+var ScrollView           = Packages.android.widget.ScrollView;
+var HorizontalScrollView = Packages.android.widget.HorizontalScrollView;
+var EditText             = Packages.android.widget.EditText;
+var GridView             = Packages.android.widget.GridView;
+var WebView              = Packages.android.webkit.WebView;
+var View                 = Packages.android.view.View;
+var Gravity              = Packages.android.view.Gravity;
+var Color                = Packages.android.graphics.Color;
+var Intent               = Packages.android.content.Intent;
+var Uri                  = Packages.android.net.Uri;
+var LayoutParams         = Packages.android.widget.LinearLayout.LayoutParams;
+var FrameParams          = Packages.android.widget.FrameLayout.LayoutParams;
+var NotificationChannel  = Packages.android.app.NotificationChannel;
+var NotificationMgr      = Packages.android.app.NotificationManager;
+var AppNotification      = Packages.android.app.Notification;
+var PendingIntent        = Packages.android.app.PendingIntent;
+var AppContext           = Packages.android.content.Context;
+
+// JAS ユーティリティ
+var CustomGridAdapter    = pkg.adapters.CustomGridAdapter;
+var JASWebChromeClient   = pkg.web.JASWebChromeClient;
+var JASWebViewClient     = pkg.web.JASWebViewClient;
+
+// ── 定数 ─────────────────────────────────────────────────────
+var COLOR_BG      = Color.parseColor("#0F0F1A");
+var COLOR_SURFACE = Color.parseColor("#1E1E35");
+var COLOR_ACCENT  = Color.parseColor("#4FC3F7");
+var COLOR_TEXT    = Color.parseColor("#EEEEEE");
+var COLOR_MUTED   = Color.parseColor("#666688");
+var COLOR_DIVIDER = Color.parseColor("#2A2A45");
+var COLOR_TAB_BAR = Color.parseColor("#1A1A2E");
+
+var TAB_BUILDER  = 0;
+var TAB_TERMINAL = 1;
+var TAB_WEB      = 2;
+var TAB_LAUNCHER = 3;
+
+var SAMPLES_BASE  = "/storage/emulated/0/Android/data/com.completeapps.jascriptapp/files/JAScript/assets/samples/basicsamples/";
+var TEMPLATES_DIR = SAMPLES_BASE + "RhinoJS/";
+var TRUSTED_DIR   = "/storage/emulated/0/MWV-Script/Scripts/";
+var APPS_DIR      = "/storage/emulated/0/MWV-Script/Apps/";
+
+var RECORDER_CHANNEL  = "mwv_recorder";
+var RECORDER_NOTIF_ID = 1001;
+
+// ── 状態 ─────────────────────────────────────────────────────
+var currentTab       = TAB_BUILDER;
+var selectedCategory = "RhinoJS";
+var isRecording      = false;
+var helpData         = {};
+
+var rootLayout, contentFrame, tabBar;
+var webView, urlInput, progressBar;
+var launcherAdapter;
+var launcherLabel   = [];
+var launcherPkg     = [];
+var launcherPkgName = [];
+var terminalEngine  = "rjs";
+var terminalOutput  = null;
+var terminalInput   = null;
+
+// ── カテゴリ定義 ─────────────────────────────────────────────
+var CATEGORIES = ["RhinoJS", "BSH", "HTML", "JS", "Python", "TypeScript", "Kotlin", "LiveScript", "Java"];
+
+var TEMPLATES = {
+    "RhinoJS": [
+        ["Button",              "RhinoJS/Widgets/Button.txt"],
+        ["TextView",            "RhinoJS/Widgets/TextView.txt"],
+        ["ListView",            "RhinoJS/Widgets/ListView.txt"],
+        ["Custom ListView",     "RhinoJS/Widgets/Custom ListView.txt"],
+        ["Widgets（全部入り）", "RhinoJS/Widgets/Widgets.txt"],
+        ["Color Drawable",      "RhinoJS/Drawables/ColorDrawable.txt"],
+        ["Ripple Drawable",     "RhinoJS/Drawables/RippleDrawable.txt"],
+        ["Alpha Animation",     "RhinoJS/Animations/Alpha.txt"],
+        ["Scale Animation",     "RhinoJS/Animations/Scale.txt"],
+        ["AlertDialog",         "RhinoJS/Dialogs/AlertDialog.txt"],
+        ["Notification",        "RhinoJS/Notification/Basic Notification.txt"],
+        ["Background Service",  "RhinoJS/Service/Background Service.txt"],
+        ["Accelerometer",       "RhinoJS/Sensors/Accerelometer.txt"],
+        ["Request Permissions", "RhinoJS/Others/Request Permissions.txt"],
+        ["Battery Info",        "RhinoJS/Others/Battery Info.txt"],
+        ["Vibrate",             "RhinoJS/Others/Vibrate.txt"],
+        ["Flashlight",          "RhinoJS/Others/Flashlight.txt"],
+        ["Read & Write File",   "RhinoJS/Files/Read and Write File.txt"],
+        ["SQLite Database",     "RhinoJS/Database/Create Database.txt"],
+        ["SharedPreferences",   "RhinoJS/Others/Load and Save Text.txt"],
+        ["Fetch from URL",      "RhinoJS/Others/Fetch data from url.txt"],
+        ["Enable WiFi",         "RhinoJS/Network/Enable Wifi.txt"],
+        ["Enable Bluetooth",    "RhinoJS/Network/Enable Bluetooth.txt"],
+        ["Audio Player",        "RhinoJS/Media/Media Player.txt"],
+        ["Video Player",        "RhinoJS/Media/Video Player.txt"],
+        ["TextToSpeech",        "RhinoJS/Others/TextToSpeech.txt"],
+        ["Speech Recognition",  "RhinoJS/Others/Speech Recognition.txt"],
+        ["WebView Browser",     "RhinoJS/Webview/Simple Web Browser.txt"],
+        ["Canvas Draw",         "RhinoJS/Others/Canvas.txt"],
+        ["App Launcher",        "RhinoJS/Others/List installed apps.txt"],
+        ["Broadcast Receiver",  "RhinoJS/Others/Broadcast Receiver.txt"],
+        ["Thread",              "RhinoJS/Threads/Thread.txt"],
+        ["Async Task",          "RhinoJS/Threads/Async Task.txt"],
+        ["Utility Functions",   "RhinoJS/Utility Functions.txt"]
+    ],
+    "BSH": [
+        ["AlertDialog",         "BeanShell/AlertDialog.bsh"],
+        ["Options Menu",        "BeanShell/OptionsMenu.bsh"],
+        ["Read Write File",     "BeanShell/ReadWriteFile.bsh"],
+        ["Widgets",             "BeanShell/Widgets.bsh"]
+    ],
+    "HTML": [
+        ["Basic Example",       "HTML/Basic Example.html"],
+        ["Buttons",             "HTML/Buttons.html"],
+        ["Canvas",              "HTML/Canvas.html"],
+        ["Forms",               "HTML/Forms.html"],
+        ["Tables",              "HTML/Tables.html"],
+        ["SVG",                 "HTML/SVG.html"],
+        ["Bootstrap",           "HTML/Bootstrap/Basic Sample.html"],
+        ["React JS",            "HTML/React JS/Basic Sample.html"],
+        ["Vue JS",              "HTML/Vue JS/Basic Sample.html"],
+        ["JQuery",              "HTML/JQuery/Basic Sample.html"]
+    ],
+    "JS": [
+        ["Variables",           "JavaScript/variables.js"],
+        ["Functions",           "JavaScript/functions.js"],
+        ["Arrays",              "JavaScript/arrays.js"],
+        ["Async/Await",         "JavaScript/async_await.js"],
+        ["Promises",            "JavaScript/promises.js"],
+        ["HTTP Fetch",          "JavaScript/http_fetch.js"]
+    ],
+    "Python": [
+        ["Variables",           "Python/Variables.py"],
+        ["Functions",           "Python/Functions.py"],
+        ["Collections",         "Python/Collections.py"],
+        ["Error Handling",      "Python/Error_handling.py"],
+        ["File I/O",            "Python/Fileio.py"]
+    ],
+    "TypeScript": [
+        ["Variables",           "TypeScript/Variables.ts"],
+        ["Functions",           "TypeScript/Functions.ts"],
+        ["Classes",             "TypeScript/Class.ts"],
+        ["Interfaces",          "TypeScript/Interfaces.ts"],
+        ["Generics",            "TypeScript/Generics.ts"]
+    ],
+    "Kotlin": [
+        ["Variables",           "Kotlin/Variables.kt"],
+        ["Functions",           "Kotlin/Functions.kt"],
+        ["Collections",         "Kotlin/Collections.kt"],
+        ["Lambda",              "Kotlin/Lambda.kt"]
+    ],
+    "LiveScript": [
+        ["Variables",           "LiveScript/Variables.ls"],
+        ["Functions",           "LiveScript/Functions.ls"],
+        ["Lists",               "LiveScript/Lists.ls"],
+        ["Objects",             "LiveScript/Objects.ls"]
+    ],
+    "Java": [
+        ["Variables",           "Java/Variables.java"],
+        ["Functions",           "Java/Functions.java"],
+        ["Collections",         "Java/Collections.java"],
+        ["Threads",             "Java/Threads.java"],
+        ["File I/O",            "Java/FileIO.java"]
+    ]
+};
+
+// ── ASTスキャン定義 ──────────────────────────────────────────
+var BLOCKED_PATTERNS = [
+    [/eval\s*\(.*fetch/,          "eval(fetch()) 動的ロード"],
+    [/getDeclaredMethod/,         "Reflection 隠しメソッド呼び出し"],
+    [/setAccessible\s*\(\s*true/, "Reflection setAccessible"]
+];
+
+var RISK_PATTERNS = [
+    [/Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec/, "シェル実行"],
+    [/ProcessBuilder\s*\(/,       "シェル実行"],
+    [/DexClassLoader\s*\(/,       "DEXロード"],
+    [/HttpURLConnection|openConnection\s*\(/, "ネットワーク通信"],
+    [/FileWriter\s*\(/,           "ファイル書き込み"],
+    [/FileOutputStream\s*\(/,     "ファイル書き込み"],
+    [/WifiManager/,               "WiFi制御"],
+    [/BluetoothAdapter/,          "Bluetooth制御"],
+    [/CameraManager/,             "カメラ操作"],
+    [/requestPermissions\s*\(/,   "権限リクエスト"],
+    [/getClipboardText|setClipboardText/, "クリップボード操作"]
+];
+
+// ============================================================
+// onCreate
+// ============================================================
+function onCreate(savedInstanceState) {
+    ctx.setTitle("MWV-Script");
+    try { var ab = ctx.getActionBar(); if (ab != null) ab.hide(); } catch(e) {}
+    try {
+        pkg.Utils.setStatusBarBackgroundColor(ctx, COLOR_BG);
+        pkg.Utils.setNavigationBarBackgroundColor(ctx, COLOR_BG);
+    } catch(e) {}
+
+    setupRecorderNotification();
+    buildRootLayout();
+
+    bTask(function() {
+        initAssets();
+    }, function() {
+        showTab(TAB_BUILDER);
+    });
+}
+
+// ============================================================
+// assets全ロード
+// ============================================================
+function loadAssetText(path) {
+    var is  = ctx.getAssets().open(path);
+    var sc  = new java.util.Scanner(is).useDelimiter("\\A");
+    var txt = sc.hasNext() ? String(sc.next()) : "";
+    sc.close();
+    is.close();
+    return txt;
+}
+
+function readFileText(filePath) {
+    var file = new java.io.File(filePath);
+    if (!file.exists()) return "";
+    var fis  = new java.io.FileInputStream(file);
+    var sc2  = new java.util.Scanner(fis, "UTF-8").useDelimiter("\\A");
+    var txt  = sc2.hasNext() ? String(sc2.next()) : "";
+    sc2.close();
+    fis.close();
+    return txt;
+}
+
+function initAssets() {
+    try {
+        eval(loadAssetText("libs/format/beautify.min.js"));
+        eval(loadAssetText("libs/format/beautify-css.min.js"));
+        eval(loadAssetText("libs/format/beautify-html.min.js"));
+        eval(loadAssetText("libs/lint/jshint-rhino.js"));
+        eval(loadAssetText("libs/lint/eslinter.min.js"));
+        eval(loadAssetText("libs/lint/csslint.js"));
+        eval(loadAssetText("libs/lint/htmlhint.js"));
+        eval(loadAssetText("libs/tojs/typescript.min.js"));
+        eval(loadAssetText("libs/tojs/livescript-min.js"));
+        eval(loadAssetText("libs/tojs/brython.min.js"));
+        eval(loadAssetText("libs/tojs/brython_stdlib.js"));
+        eval(loadAssetText("libs/transform/babel.min.js"));
+        eval(loadAssetText("libs/minify/htmlminifier.min.js"));
+        eval(loadAssetText("libs/minify/htmlminifier2.js"));
+        eval(loadAssetText("libs/console/eruda.min.js"));
+        eval(loadAssetText("local/dominspect.js"));
+        eval(loadAssetText("local/windowobjtree.js"));
+        eval(loadAssetText("res/inc"));
+        eval(loadAssetText("res/ts"));
+        eval(loadAssetText("res/fmt"));
+        eval(loadAssetText("res/fmtb"));
+
+        var Jsoup = Packages.org.jsoup.Jsoup;
+        helpData["help"]    = jsoupToJson(Jsoup, "help/help.html");
+        helpData["js"]      = jsoupToJson(Jsoup, "help/js_tutorial.html");
+        helpData["java2js"] = jsoupToJson(Jsoup, "help/java2js_tutorial.html");
+        helpData["about"]   = jsoupToJson(Jsoup, "help/about.html");
+
+        new java.io.File(TRUSTED_DIR).mkdirs();
+        new java.io.File(APPS_DIR).mkdirs();
+    } catch(e) {
+        popup("assets初期化エラー: " + e.message);
+    }
+}
+
+function jsoupToJson(Jsoup, assetPath) {
+    try {
+        var html = loadAssetText(assetPath);
+        var doc  = Jsoup.parse(html);
+        return JSON.stringify({ title: String(doc.title()), body: String(doc.body().html()) });
+    } catch(e) {
+        return JSON.stringify({ title: assetPath, body: "" });
+    }
+}
+
+function convertToRJS(code, engine) {
+    try {
+        if (engine === "typescript") return String(ts.transpile(code));
+        else if (engine === "livescript") return String(LiveScript.compile(code));
+        else if (engine === "babel") {
+            var result = Babel.transform(code, {presets: ["es2015"]});
+            return String(result.code);
+        } else if (engine === "html") {
+            var Jsoup = Packages.org.jsoup.Jsoup;
+            var doc   = Jsoup.parse(code);
+            return String(doc.select("script").html());
+        }
+        return code;
+    } catch(e) {
+        return "// 変換エラー: " + e.message + "\n" + code;
+    }
+}
+
+function sanitizeAndroidRefs(code) {
+    return code.replace(/([^.\w])android\.([A-Za-z])/g, function(match, prefix, nextChar) {
+        return prefix + "Packages.android." + nextChar;
+    });
+}
+
+// ============================================================
+// レイアウト構築
+// ============================================================
+function buildRootLayout() {
+    rootLayout = new LinearLayout(ctx);
+    rootLayout.setOrientation(LinearLayout.VERTICAL);
+    rootLayout.setBackgroundColor(COLOR_BG);
+    rootLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+    contentFrame = new FrameLayout(ctx);
+    contentFrame.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+
+    tabBar = buildTabBar();
+    rootLayout.addView(contentFrame);
+    rootLayout.addView(divider());
+    rootLayout.addView(tabBar);
+    ctx.setContentView(rootLayout);
+}
+
+function buildTabBar() {
+    var bar = new LinearLayout(ctx);
+    bar.setOrientation(LinearLayout.HORIZONTAL);
+    bar.setBackgroundColor(COLOR_TAB_BAR);
+    bar.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+    var labels = ["ビルダー", "ターミナル", "ウェブ", "ランチャー"];
+    for (var i = 0; i < labels.length; i++) {
+        bar.addView(buildTabButton(labels[i], i));
+    }
+    return bar;
+}
+
+function buildTabButton(label, index) {
+    var btn = new TextView(ctx);
+    btn.setText(label);
+    btn.setGravity(Gravity.CENTER);
+    btn.setPadding(0, 24, 0, 24);
+    btn.setTextSize(12);
+    btn.setTextColor(index === TAB_BUILDER ? COLOR_ACCENT : COLOR_MUTED);
+    btn.setLayoutParams(new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
+    btn.setOnClickListener(function() { updateTabColors(index); showTab(index); });
+    return btn;
+}
+
+function updateTabColors(activeIndex) {
+    for (var i = 0; i < tabBar.getChildCount(); i++) {
+        tabBar.getChildAt(i).setTextColor(i === activeIndex ? COLOR_ACCENT : COLOR_MUTED);
+    }
+}
+
+function showTab(tab) {
+    currentTab = tab;
+    contentFrame.removeAllViews();
+    var view;
+    if      (tab === TAB_BUILDER)  view = buildBuilderTab();
+    else if (tab === TAB_TERMINAL) view = buildTerminalTab();
+    else if (tab === TAB_WEB)      view = buildWebTab();
+    else if (tab === TAB_LAUNCHER) view = buildLauncherTab();
+    contentFrame.addView(view);
+}
+
+// ============================================================
+// ビルダータブ
+// ============================================================
+function buildBuilderTab() {
+    var root = newVLayout(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+    root.setBackgroundColor(COLOR_BG);
+
+    var hScroll = new HorizontalScrollView(ctx);
+    hScroll.setHorizontalScrollBarEnabled(false);
+    var catRow = newHLayout(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    catRow.setPadding(12, 12, 12, 12);
+    for (var i = 0; i < CATEGORIES.length; i++) catRow.addView(buildCategoryChip(CATEGORIES[i]));
+    hScroll.addView(catRow);
+    root.addView(hScroll);
+    root.addView(divider());
+
+    var scroll = new ScrollView(ctx);
+    scroll.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+    var list = newVLayout(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    list.setPadding(16, 8, 16, 8);
+
+    var items = TEMPLATES[selectedCategory] || TEMPLATES["RhinoJS"];
+    for (var j = 0; j < items.length; j++) list.addView(buildTemplateCard(items[j][0], items[j][1]));
+    scroll.addView(list);
+    root.addView(scroll);
+    return root;
+}
+
+function buildCategoryChip(label) {
+    var chip = new TextView(ctx);
+    chip.setText(label);
+    chip.setPadding(28, 14, 28, 14);
+    chip.setTextSize(13);
+    chip.setGravity(Gravity.CENTER);
+    var lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    lp.setMargins(4, 0, 4, 0);
+    chip.setLayoutParams(lp);
+    if (label === selectedCategory) {
+        chip.setTextColor(COLOR_BG); chip.setBackgroundColor(COLOR_ACCENT);
+    } else {
+        chip.setTextColor(COLOR_ACCENT); chip.setBackgroundColor(COLOR_SURFACE);
+    }
+    chip.setOnClickListener(function() { selectedCategory = label; showTab(TAB_BUILDER); });
+    return chip;
+}
+
+function buildTemplateCard(name, path) {
+    var card = newHLayout(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    card.setBackgroundColor(COLOR_SURFACE);
+    card.setPadding(20, 16, 20, 16);
+    card.setGravity(Gravity.CENTER_VERTICAL);
+    var lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    lp.setMargins(0, 6, 0, 6);
+    card.setLayoutParams(lp);
+
+    var nameView = new TextView(ctx);
+    nameView.setText(name);
+    nameView.setTextColor(COLOR_TEXT);
+    nameView.setTextSize(14);
+    nameView.setLayoutParams(new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
+
+    card.addView(nameView);
+    card.addView(buildSmallButton("編集", function() { openInEdit(path); }));
+    card.addView(buildSmallButton("実行", function() { runTemplate(path); }));
+    return card;
+}
+
+// ============================================================
+// ターミナルタブ
+// ============================================================
+function buildTerminalTab() {
+    var root = newVLayout(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+    root.setBackgroundColor(COLOR_BG);
+
+    var engineBar = newHLayout(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    engineBar.setBackgroundColor(COLOR_SURFACE);
+    engineBar.setPadding(12, 8, 12, 8);
+    var lbl = new TextView(ctx);
+    lbl.setText("Engine:"); lbl.setTextColor(COLOR_MUTED); lbl.setTextSize(13);
+    lbl.setPadding(0, 0, 12, 0); lbl.setGravity(Gravity.CENTER_VERTICAL);
+    engineBar.addView(lbl);
+    engineBar.addView(buildEngineButton("RJS", "rjs"));
+    engineBar.addView(buildEngineButton("BSH", "bsh"));
+    root.addView(engineBar);
+    root.addView(divider());
+
+    terminalInput = new EditText(ctx);
+    terminalInput.setHint("RJS / BSH コードを入力...");
+    terminalInput.setTextColor(Color.parseColor("#00FF88"));
+    terminalInput.setHintTextColor(COLOR_MUTED);
+    terminalInput.setBackgroundColor(COLOR_BG);
+    terminalInput.setTextSize(13);
+    terminalInput.setTypeface(Packages.android.graphics.Typeface.MONOSPACE);
+    terminalInput.setGravity(Gravity.TOP);
+    terminalInput.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+    terminalInput.setPadding(16, 16, 16, 16);
+    root.addView(terminalInput);
+    root.addView(divider());
+
+    terminalOutput = new EditText(ctx);
+    terminalOutput.setText("> MWV Terminal\n");
+    terminalOutput.setTextColor(Color.parseColor("#AAFFCC"));
+    terminalOutput.setBackgroundColor(Color.parseColor("#0A0A15"));
+    terminalOutput.setTextSize(12);
+    terminalOutput.setTypeface(Packages.android.graphics.Typeface.MONOSPACE);
+    terminalOutput.setGravity(Gravity.TOP);
+    terminalOutput.setFocusable(false);
+    terminalOutput.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+    terminalOutput.setPadding(16, 12, 16, 12);
+    root.addView(terminalOutput);
+    root.addView(divider());
+
+    var actionBar = newHLayout(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    actionBar.setBackgroundColor(COLOR_SURFACE);
+    actionBar.setPadding(8, 8, 8, 8);
+    actionBar.addView(buildSmallButton("CLR", function() { terminalOutput.setText("> cleared\n"); }));
+    actionBar.addView(buildSmallButton("パス実行", function() {
+        var fc = new pkg.utils.FileChooser(ctx);
+        fc.addFilter(".txt"); fc.addFilter(".rjs"); fc.addFilter(".bsh");
+        fc.explore(); fc.waitUntilDismiss();
+        var sel = fc.getSelectedFile();
+        if (sel != null) runTemplate(String(sel.getAbsolutePath()));
+    }));
+    actionBar.addView(buildSmallButton("▶ 実行", function() { runTerminal(); }));
+    root.addView(actionBar);
+    return root;
+}
+
+function buildEngineButton(label, engine) {
+    var btn = new TextView(ctx);
+    btn.setText(label); btn.setPadding(24, 10, 24, 10); btn.setTextSize(13);
+    btn.setGravity(Gravity.CENTER);
+    var lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    lp.setMargins(0, 0, 8, 0); btn.setLayoutParams(lp);
+    if (engine === terminalEngine) { btn.setTextColor(COLOR_BG); btn.setBackgroundColor(COLOR_ACCENT); }
+    else { btn.setTextColor(COLOR_ACCENT); btn.setBackgroundColor(COLOR_BG); }
+    btn.setOnClickListener(function() { terminalEngine = engine; showTab(TAB_TERMINAL); });
+    return btn;
+}
+
+function runTerminal() {
+    var code = String(terminalInput.getText().toString().trim());
+    if (code.length === 0) return;
+    var risk = scanScript(code);
+    if (risk.blocked) { terminalAppend("[BLOCKED] " + risk.reason); return; }
+    if (risk.needsBiometric) {
+        var confirmed = new pkg.utils.Confirm(ctx, "実行確認",
+            "以下の操作が含まれます:\n\n" + risk.summary + "\n\n実行しますか?", "実行", "キャンセル");
+        confirmed.waitUntilDismiss();
+        if (!confirmed.isConfirmed()) { terminalAppend("[CANCELLED]"); return; }
+    }
+    terminalAppend("[" + terminalEngine.toUpperCase() + "] > " + code.substring(0, 60));
+    var intent = new Intent();
+    if (terminalEngine === "bsh") {
+        intent.setClassName("com.completeapps.jascriptapp", "com.completeapps.jascriptapp.BeanShellActivity");
+    } else {
+        intent.setClassName("com.completeapps.jascriptapp", "com.completeapps.jascriptapp.ScriptActivity");
+    }
+    intent.putExtra("script", code);
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    ctx.startActivity(intent);
+    terminalAppend("[sent to JAS engine]");
+}
+
+function terminalAppend(text) {
+    if (terminalOutput == null) return;
+    terminalOutput.setText(String(terminalOutput.getText().toString()) + text + "\n");
+}
+
+// ============================================================
+// ウェブタブ
+// ============================================================
+function buildWebTab() {
+    var root = newVLayout(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+    root.setBackgroundColor(COLOR_BG);
+
+    progressBar = new TextView(ctx);
+    progressBar.setBackgroundColor(COLOR_ACCENT);
+    progressBar.setLayoutParams(new LayoutParams(0, 5));
+
+    var urlRow = newHLayout(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+    urlRow.setBackgroundColor(COLOR_SURFACE);
+    urlRow.setPadding(8, 8, 8, 8);
+
+    urlInput = new EditText(ctx);
+    urlInput.setText("https://");
+    urlInput.setTextColor(COLOR_TEXT);
+    urlInput.setBackgroundColor(Color.TRANSPARENT);
+    urlInput.setTextSize(13);
+    urlInput.setLayoutParams(new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
+
+    var width = pkg.Utils.getDisplayWidth(ctx);
+    webView = new WebView(ctx);
+    webView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+    var settings = webView.getSettings();
+    settings.setJavaScriptEnabled(true);
+    settings.setDomStorageEnabled(true);
+    settings.setAllowFileAccessFromFileURLs(true);
+    settings.setUseWideViewPort(true);
+    settings.setLoadWithOverviewMode(true);
+    settings.setBuiltInZoomControls(true);
+    settings.setDisplayZoomControls(false);
+
+    var wcc = new JASWebChromeClient();
+    var wvc = new JASWebViewClient();
+    wcc.onWebChromeActions(function(method, params) {
+        if (method === "onReceivedTitle") ctx.setTitle(params[1]);
+        else if (method === "onProgressChanged") {
+            progressBar.setLayoutParams(new LayoutParams((params[1] / 100) * width, 5));
+        }
+    });
+    wvc.onWebViewActions(function(method, params) {
+        if (method === "onPageFinished") urlInput.setText(String(params[1]));
+    });
+    webView.setWebViewClient(wvc);
+    webView.setWebChromeClient(wcc);
+    webView.loadDataWithBaseURL(null, buildHomeHTML(), "text/html", "UTF-8", null);
+
+    urlRow.addView(urlInput);
+    urlRow.addView(buildSmallButton("移動", function() {
+        var url = urlInput.getText().toString().trim();
+        if (url.length > 0) {
+            if (url.indexOf("http") !== 0) url = "https://" + url;
+            webView.loadUrl(url);
+        }
+    }));
+
+    root.addView(progressBar);
+    root.addView(urlRow);
+    root.addView(divider());
+    root.addView(webView);
+    return root;
+}
+
+function buildHomeHTML() {
+    return "<!DOCTYPE html><html><head><meta charset='UTF-8'>" +
+    "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+    "<style>" +
+    "*{margin:0;padding:0;box-sizing:border-box;}" +
+    "body{background:#0F0F1A;color:#EEEEEE;font-family:sans-serif;" +
+    "display:flex;flex-direction:column;align-items:center;" +
+    "justify-content:center;min-height:100vh;padding:24px;}" +
+    "h1{color:#4FC3F7;font-size:28px;margin-bottom:8px;}" +
+    "p{color:#666688;font-size:14px;margin-bottom:32px;}" +
+    ".grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:100%;max-width:480px;}" +
+    ".card{background:#1E1E35;border-radius:8px;padding:20px 16px;" +
+    "text-align:center;cursor:pointer;border:1px solid #2A2A45;}" +
+    ".card:active{background:#2A2A50;}" +
+    ".card h2{color:#4FC3F7;font-size:15px;margin-bottom:6px;}" +
+    ".card p{color:#AAAACC;font-size:12px;}" +
+    ".search{width:100%;max-width:480px;margin-bottom:24px;" +
+    "background:#1E1E35;border:1px solid #2A2A45;border-radius:24px;" +
+    "padding:12px 20px;color:#EEEEEE;font-size:15px;outline:none;}" +
+    "</style></head><body>" +
+    "<h1>MWV-Script</h1>" +
+    "<p>2nd OS — Android全操作を統一言語RJSで</p>" +
+    "<input class='search' type='text' placeholder='検索またはURLを入力...'" +
+    " onkeydown='if(event.keyCode===13){var v=this.value.trim();" +
+    "if(v.indexOf(\"http\")!==0)v=\"https://www.google.com/search?q=\"+encodeURIComponent(v);" +
+    "location.href=v;}'>" +
+    "<div class='grid'>" +
+    "<div class='card'><h2>🔨 ビルダー</h2><p>GUIでRJSを生成</p></div>" +
+    "<div class='card'><h2>⌨️ ターミナル</h2><p>スクリプトを直接実行</p></div>" +
+    "<div class='card'><h2>🚀 ランチャー</h2><p>JPKアプリを起動</p></div>" +
+    "<div class='card'><h2>🔒 セキュリティ</h2><p>ASTスキャン + 生体認証</p></div>" +
+    "</div></body></html>";
+}
+
+// ============================================================
+// ランチャータブ
+// ============================================================
+function buildLauncherTab() {
+    var root = newVLayout(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+    root.setBackgroundColor(COLOR_BG);
+
+    var header = new TextView(ctx);
+    header.setText("インストール済みアプリ");
+    header.setTextColor(COLOR_ACCENT); header.setTextSize(15);
+    header.setPadding(20, 20, 20, 12);
+    root.addView(header);
+    root.addView(divider());
+
+    launcherAdapter = new CustomGridAdapter(ctx, launcherLabel, launcherPkg);
+    launcherAdapter.setImageType("drawable");
+    launcherAdapter.setTextColor(COLOR_TEXT);
+    launcherAdapter.setBackgroundColor(Color.parseColor("#1e141414"));
+    launcherAdapter.setTextSize(12);
+
+    var grid = new GridView(ctx);
+    grid.setNumColumns(4);
+    grid.setAdapter(launcherAdapter);
+    grid.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+    grid.setOnItemClickListener(function(parent, v, position, id) { launchApp(position); });
+    root.addView(grid);
+
+    bTask(function() { loadApps(); }, function() {
+        launcherAdapter.setList(launcherLabel, launcherPkg);
+    });
+    return root;
+}
+
+function loadApps() {
+    var pm = ctx.getPackageManager();
+    var intent = new Intent(Intent.ACTION_MAIN, null);
+    intent.addCategory(Intent.CATEGORY_LAUNCHER);
+    var apps = pm.queryIntentActivities(intent, 1);
+    launcherLabel = []; launcherPkg = []; launcherPkgName = [];
+    for (var i = 0; i < apps.size(); i++) {
+        launcherLabel.push(apps.get(i).activityInfo.loadLabel(pm).toString());
+        launcherPkg.push(apps.get(i).activityInfo.loadIcon(pm));
+        launcherPkgName.push(apps.get(i).activityInfo.packageName);
+    }
+}
+
+function launchApp(position) {
+    var intent = ctx.getPackageManager().getLaunchIntentForPackage(launcherPkgName[position]);
+    if (intent != null) ctx.startActivity(intent);
+    else popup("起動できません");
+}
+
+// ============================================================
+// テンプレート操作
+// ============================================================
+function openInEdit(relativePath) {
+    var file = new java.io.File(SAMPLES_BASE + relativePath);
+    if (!file.exists()) { popup("テンプレートが見つかりません:\n" + relativePath); return; }
+    var intent = new Intent(Intent.ACTION_EDIT);
+    intent.setDataAndType(Uri.fromFile(file), "text/plain");
+    intent.setPackage("com.completeapps.jascriptapp");
+    try { ctx.startActivity(intent); } catch(e) { popup("JASが見つかりません"); }
+}
+
+function runTemplate(path) {
+    var fullPath = path.indexOf("/") === 0 ? path : SAMPLES_BASE + path;
+    var file = new java.io.File(fullPath);
+    if (!file.exists()) { popup("ファイルが見つかりません:\n" + fullPath); return; }
+
+    var code = readFileText(fullPath);
+    var engine = "rjs";
+    if (fullPath.indexOf(".ts") > -1)        engine = "typescript";
+    else if (fullPath.indexOf(".ls") > -1)   engine = "livescript";
+    else if (fullPath.indexOf(".py") > -1)   engine = "brython";
+    else if (fullPath.indexOf(".html") > -1) engine = "html";
+    else if (fullPath.indexOf(".js") > -1)   engine = "babel";
+    else if (fullPath.indexOf(".bsh") > -1)  engine = "bsh";
+    else if (fullPath.indexOf(".java") > -1) engine = "bsh";
+    else if (fullPath.indexOf(".kt") > -1)   engine = "kotlite";
+
+    if (engine !== "rjs" && engine !== "bsh") code = convertToRJS(code, engine);
+    if (engine === "rjs") code = sanitizeAndroidRefs(code);
+
+    var risk = scanScript(code);
+    if (risk.blocked) { popup("実行禁止パターンを検出:\n" + risk.reason); return; }
+    if (risk.needsBiometric) {
+        var confirmed = new pkg.utils.Confirm(ctx, "実行確認",
+            "以下の操作が含まれます:\n\n" + risk.summary + "\n\n実行しますか?", "実行", "キャンセル");
+        confirmed.waitUntilDismiss();
+        if (!confirmed.isConfirmed()) return;
+    }
+
+    if (engine === "html") {
+        updateTabColors(TAB_WEB); showTab(TAB_WEB);
+        runOnUIThread(function() {
+            if (webView != null) webView.loadDataWithBaseURL("file:///android_asset/", code, "text/html", "UTF-8", null);
+        });
+        return;
+    }
+
+    var intent = new Intent();
+    if (engine === "bsh") {
+        intent.setClassName("com.completeapps.jascriptapp", "com.completeapps.jascriptapp.BeanShellActivity");
+        intent.putExtra("script", code);
+        ctx.startActivity(intent);
+    } else {
+        intent.setClassName("com.completeapps.jascriptapp", "com.completeapps.jascriptapp.ScriptActivity");
+        intent.putExtra("script", code);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        ctx.startActivity(intent);
+    }
+}
+
+// ============================================================
+// ASTスキャン
+// ============================================================
+function scanScript(script) {
+    var result = { blocked: false, needsBiometric: false, reason: "", summary: "" };
+    var risks = [];
+    for (var i = 0; i < BLOCKED_PATTERNS.length; i++) {
+        if (BLOCKED_PATTERNS[i][0].test(script)) {
+            result.blocked = true; result.reason = BLOCKED_PATTERNS[i][1]; return result;
+        }
+    }
+    for (var j = 0; j < RISK_PATTERNS.length; j++) {
+        if (RISK_PATTERNS[j][0].test(script)) risks.push(RISK_PATTERNS[j][1]);
+    }
+    if (risks.length > 0) { result.needsBiometric = true; result.summary = risks.join("\n"); }
+    return result;
+}
+
+// ============================================================
+// マクロレコーダー通知
+// ============================================================
+function setupRecorderNotification() {
+    var nm = ctx.getSystemService(AppContext.NOTIFICATION_SERVICE);
+    if (Packages.android.os.Build.VERSION.SDK_INT >= 26) {
+        var ch = new NotificationChannel(RECORDER_CHANNEL, "マクロレコーダー", NotificationMgr.IMPORTANCE_LOW);
+        nm.createNotificationChannel(ch);
+    }
+    var pi = PendingIntent.getActivity(ctx, 0, new Intent(ctx, pkg.ScriptActivity),
+        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    var b = new AppNotification.Builder(ctx)
+        .setSmallIcon(pkg.R.drawable.edit)
+        .setContentTitle("MWV マクロレコーダー")
+        .setContentText("タップして通知パネルを閉じると録画開始")
+        .setPriority(-1).setOngoing(true).setContentIntent(pi);
+    if (Packages.android.os.Build.VERSION.SDK_INT >= 26) b.setChannelId(RECORDER_CHANNEL);
+    nm.notify(RECORDER_NOTIF_ID, b.build());
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function newVLayout(w, h) {
+    var l = new LinearLayout(ctx);
+    l.setOrientation(LinearLayout.VERTICAL);
+    l.setLayoutParams(new LayoutParams(w, h));
+    return l;
+}
+
+function newHLayout(w, h) {
+    var l = new LinearLayout(ctx);
+    l.setOrientation(LinearLayout.HORIZONTAL);
+    l.setLayoutParams(new LayoutParams(w, h));
+    return l;
+}
+
+function buildSmallButton(label, onClick) {
+    var btn = new TextView(ctx);
+    btn.setText(label); btn.setTextColor(COLOR_BG); btn.setBackgroundColor(COLOR_ACCENT);
+    btn.setPadding(20, 10, 20, 10); btn.setTextSize(12); btn.setGravity(Gravity.CENTER);
+    var lp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    lp.setMargins(8, 0, 0, 0); btn.setLayoutParams(lp);
+    btn.setOnClickListener(onClick);
+    return btn;
+}
+
+function divider() {
+    var v = new View(ctx);
+    v.setBackgroundColor(COLOR_DIVIDER);
+    v.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 1));
+    return v;
+}
+
+function onDestroy() {
+    var nm = ctx.getSystemService(AppContext.NOTIFICATION_SERVICE);
+    nm.cancel(RECORDER_NOTIF_ID);
+}
+
+function onKeyUp(keycode, event) {
+    if (keycode === Packages.android.view.KeyEvent.KEYCODE_BACK) return false;
+    return false;
+}
