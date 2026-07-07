@@ -1,0 +1,5 @@
+----DESCRIPTION---
+java.lang.RuntimeException: Unable to start activity ComponentInfo{com.completeapps.jascriptapp/com.completeapps.jascriptapp.ScriptActivity}: java.lang.NullPointerException
+
+---CAUSE---
+java.lang.NullPointerException
