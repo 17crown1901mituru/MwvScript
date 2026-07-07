@@ -1,0 +1,7 @@
+   var WindowManager = Packages.android.view.WindowManager;
+   var Window = Packages.android.view.Window;
+   var View = Packages.android.view.View;
+   var window = ctx.getWindow();
+   window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE);
+   ctx.getActionBar().hide();
+   

@@ -1,0 +1,35 @@
+    function onCreate(bundle)
+   {
+      print("onCreate");
+   }
+
+    function onPause()
+   {
+      print("onPause");
+   }
+
+    function onResume()
+   {
+      print("onResume");
+   }
+
+    function onStart()
+   {
+      print("onStart");
+   }
+
+    function onStop()
+   {
+      print("onStop");
+   }
+
+    function onDestroy()
+   {
+      print("onDestroy");
+   }
+
+    function onBackPressed()
+   {
+      print("onBackPressed");
+   }
+   

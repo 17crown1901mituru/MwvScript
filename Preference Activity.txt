@@ -1,0 +1,61 @@
+   
+   // Long press run icon then select "Run as RhinoJS Preferences"
+   
+   importPackage(android.preference);
+   var Color = Packages.android.graphics.Color;
+   ctx.setTheme(android.R.style.Theme_DeviceDefault_Light_DarkActionBar);
+   var category,category2,screen,screen2,p,checkBoxPref,checkBoxPref2,checkBoxPref3;
+   var color = Color.parseColor("#f55756");
+   var color2 = Color.parseColor("#d53736");
+
+    function onCreate()
+   {
+      pkg.Utils.setActionBarBackgroundColor(ctx,color);
+      pkg.Utils.setStatusBarBackgroundColor(ctx,color2);
+      ctx.setTitle("Preferences");
+      screen = ctx.getPreferenceManager().createPreferenceScreen(ctx);
+      category =  new PreferenceCategory(ctx);
+      category.setTitle("App Settings");
+      screen.addPreference(category);
+      checkBoxPref =  new CheckBoxPreference(ctx);
+      checkBoxPref.setIcon(pkg.R.drawable.folder);
+      checkBoxPref.setKey("one");
+      checkBoxPref.setTitle("Title 1");
+      checkBoxPref.setSummary("Summary");
+      checkBoxPref.setSummaryOn("On");
+      checkBoxPref.setSummaryOff("off");
+      checkBoxPref.setChecked( false );
+      category.addPreference(checkBoxPref);
+      checkBoxPref2 =  new CheckBoxPreference(ctx);
+      checkBoxPref2.setIcon(pkg.R.drawable.share);
+      checkBoxPref2.setKey("two");
+      checkBoxPref2.setTitle("Title 2");
+      checkBoxPref2.setSummary("Summary");
+      checkBoxPref2.setChecked( true );
+      category.addPreference(checkBoxPref2);
+      p =  new SwitchPreference(ctx);
+      p.setKey("three");
+      p.setIcon(pkg.R.drawable.ic_launcher);
+      p.setTitle("Title 3");
+      p.setSummary("Summary");
+      category.addPreference(p);
+      screen2 = ctx.getPreferenceManager().createPreferenceScreen(ctx);
+      screen2.setTitle("Editor settings");
+      screen2.setIcon(pkg.R.drawable.edit);
+      category2 =  new PreferenceCategory(ctx);
+      category2.setTitle("Editor Settings");
+      screen2.addPreference(category2);
+      checkBoxPref3 =  new SwitchPreference(ctx);
+      checkBoxPref3.setIcon(pkg.R.drawable.info);
+      checkBoxPref3.setKey("four");
+      checkBoxPref3.setTitle("Text Color");
+      checkBoxPref3.setSummary("Touch to toggle color");
+      checkBoxPref3.setSummaryOn("On");
+      checkBoxPref3.setSummaryOff("off");
+      checkBoxPref3.setChecked( true );
+      category2.addPreference(checkBoxPref3);
+      screen.addPreference(screen2);
+      ctx.setPreferenceScreen(screen);
+      checkBoxPref2.setDependency("one");
+   }
+   

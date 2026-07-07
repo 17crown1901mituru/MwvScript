@@ -1,0 +1,28 @@
+   var PackageManager = Packages.android.content.pm.PackageManager;
+   var Activity = Packages.android.app.Activity;
+   var Intent = Packages.android.content.Intent;
+   var requestCode = 7386;
+   var perms = [android.Manifest.permission.CAMERA];
+
+    function onCreate()
+   {
+      ctx.requestPermissions(perms,requestCode);
+   }
+
+    function onRequestPermissionsResult(req,perms,grant)
+   {
+       if (req == requestCode)
+      {
+          if (grant[0]===PackageManager.PERMISSION_GRANTED)
+         {
+            popup(perms[0]+" is granted");
+         }
+          else  if (grant[0]===PackageManager.PERMISSION_DENIED)
+         {
+            popup(perms[0]+" is denied");
+         }
+         
+      }
+      
+   }
+   
